@@ -1,0 +1,58 @@
+graph TB
+    subgraph "SvelteKit 路由"
+        Root["/+layout.svelte<br/>全局布局: 主题 / i18n / Socket.IO"]
+        Auth["/auth<br/>登录 / 注册"]
+        App["/(app)/+layout.svelte<br/>主应用布局: 侧边栏 / 导航"]
+
+        Home["/home<br/>聊天列表"]
+        Chat["/c/[id]<br/>聊天会话"]
+        Workspace["/workspace<br/>工作区"]
+        Admin["/admin<br/>管理后台"]
+        Channels["/channels/[id]<br/>频道"]
+        Notes["/notes<br/>笔记"]
+        Calendar["/calendar<br/>日历"]
+        Automations["/automations<br/>自动化"]
+        Playground["/playground<br/>模型测试场"]
+        Share["/s/[id]<br/>共享聊天"]
+    end
+
+    App --> Home
+    App --> Chat
+    App --> Workspace
+    App --> Admin
+    App --> Channels
+    App --> Notes
+    App --> Calendar
+    App --> Automations
+    App --> Playground
+    App --> Share
+
+    subgraph "Workspace 子路由"
+        WModels["/workspace/models<br/>模型管理"]
+        WKnowledge["/workspace/knowledge<br/>知识库"]
+        WPrompts["/workspace/prompts<br/>提示词"]
+        WTools["/workspace/tools<br/>工具"]
+        WSkills["/workspace/skills<br/>技能"]
+        WFunctions["/workspace/functions<br/>函数"]
+    end
+
+    Workspace --> WModels
+    Workspace --> WKnowledge
+    Workspace --> WPrompts
+    Workspace --> WTools
+    Workspace --> WSkills
+    Workspace --> WFunctions
+
+    subgraph "Admin 子路由"
+        ASettings["/admin/settings<br/>系统设置"]
+        AUsers["/admin/users<br/>用户管理"]
+        AFunctions["/admin/functions<br/>函数管理"]
+        AAnalytics["/admin/analytics<br/>分析"]
+        AEvaluations["/admin/evaluations<br/>评估"]
+    end
+
+    Admin --> ASettings
+    Admin --> AUsers
+    Admin --> AFunctions
+    Admin --> AAnalytics
+    Admin --> AEvaluations

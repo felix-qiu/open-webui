@@ -1,0 +1,48 @@
+sequenceDiagram
+    participant User as 用户
+    participant Main as 主聊天 LLM
+    participant MW as Middleware
+    participant Delegate as delegate_task()
+    participant Sub as 子代理引擎
+    participant SubChat as 子聊天会话
+    participant SubLLM as 子代理 LLM
+
+    User->>Main: 发送复杂任务
+    Main->>Main: 决定委派子任务
+    Main->>MW: 生成 tool_calls<br/>包含 delegate_task()
+
+    MW->>MW: 分离 delegate 调用<br/>与其他工具调用并行执行
+
+    MW->>Delegate: 执行 delegate_task()
+    Delegate->>SubAgent: delegate(task, context, background)
+
+    alt 前台模式 (foreground)
+        SubAgent->>SubChat: 创建子聊天会话
+        SubAgent->>SubLLM: 发送任务 + 上下文
+        SubLLM->>SubLLM: 执行任务（含工具调用）
+        SubLLM-->>SubAgent: 返回结果
+        SubAgent-->>Delegate: 返回结果摘要
+        Delegate-->>MW: 返回结果
+        MW->>Main: 注入工具结果
+        Main->>Main: 继续生成主响应
+    else 后台模式 (background)
+        SubAgent->>SubChat: 创建子聊天会话
+        SubAgent->>SubLLM: 发送任务 + 上下文
+        SubAgent-->>Delegate: 立即返回 dispatch 信息
+        Delegate-->>MW: 返回 JSON {status:dispatched}
+        MW->>Main: 注入 dispatch 信息
+        Main->>User: 继续生成主响应
+
+        Note over SubLLM: 后台独立运行
+
+        SubLLM->>SubLLM: 执行任务
+        SubLLM-->>SubAgent: 完成
+        SubAgent->>SubAgent: 构建结果消息
+        SubAgent->>Main: 注入 pending 消息到主聊天
+
+        Note over Main: 主聊天空闲时触发
+
+        Main->>Main: process_pending_internal_messages()
+        Main->>SubLLM: 处理子代理结果
+        Main->>User: 展示子代理完成通知
+    end

@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant Admin as 管理员
+    participant DB as 数据库
+    participant Cache as 运行时缓存
+    participant Loader as 动态加载器
+    participant Agent as Agent 系统
+
+    Admin->>DB: 创建/更新扩展代码
+    
+    Note over DB: 存储 Python 源码
+    
+    Agent->>Loader: 请求加载扩展
+    Loader->>Cache: 检查缓存
+    
+    alt 缓存命中
+        Cache-->>Loader: 返回缓存的模块
+    else 缓存未命中
+        Loader->>DB: 获取源码
+        Loader->>Loader: replace_imports()<br/>替换导入路径
+        Loader->>Loader: 写入临时文件
+        Loader->>Loader: exec() 执行代码
+        Loader->>Cache: 缓存模块
+    end
+    
+    Loader-->>Agent: 返回扩展实例
+    
+    Note over Agent: 调用扩展的钩子方法

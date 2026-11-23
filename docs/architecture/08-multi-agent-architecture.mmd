@@ -1,0 +1,50 @@
+graph TB
+    subgraph "主聊天会话"
+        MAIN_CHAT["主聊天<br/>parent_chat_id"]
+        MAIN_LLM["主 LLM<br/>生成响应 + 工具调用"]
+    end
+
+    subgraph "子代理系统"
+        DELEGATE["delegate_task()<br/>内置工具函数"]
+        SUB_ENGINE["utils/subagents.py<br/>delegate() 引擎"]
+        CONFIG["配置管理<br/>max_concurrent / max_async<br/>background_enabled"]
+    end
+
+    subgraph "前台子代理 (Foreground)"
+        FG_CHAT["子聊天会话<br/>独立 chat_id"]
+        FG_LLM["子 LLM<br/>完整工具访问"]
+        FG_RESULT["返回结果摘要<br/>同步等待"]
+    end
+
+    subgraph "后台子代理 (Background)"
+        BG_CHAT["子聊天会话<br/>独立 chat_id"]
+        BG_LLM["子 LLM<br/>继续运行"]
+        BG_RESULT["完成后注入结果<br/>到主聊天"]
+        BG_PENDING["pending 消息队列<br/>等待主聊天空闲"]
+    end
+
+    subgraph "定时器 (Timer)"
+        TIMER["timer()<br/>内置工具函数"]
+        TIMER_ENGINE["utils/timers.py<br/>定时器引擎"]
+        TIMER_FIRE["定时触发<br/>注入消息到主聊天"]
+    end
+
+    MAIN_LLM -->|检测 delegate_task 调用| DELEGATE
+    DELEGATE --> SUB_ENGINE
+    SUB_ENGINE -->|foreground| FG_CHAT
+    SUB_ENGINE -->|background| BG_CHAT
+    SUB_ENGINE --> CONFIG
+
+    FG_CHAT --> FG_LLM
+    FG_LLM --> FG_RESULT
+    FG_RESULT -->|同步返回| MAIN_LLM
+
+    BG_CHAT --> BG_LLM
+    BG_LLM --> BG_RESULT
+    BG_RESULT -->|process_pending_internal_messages| BG_PENDING
+    BG_PENDING -->|主聊天空闲时注入| MAIN_CHAT
+
+    MAIN_LLM -->|检测 timer 调用| TIMER
+    TIMER --> TIMER_ENGINE
+    TIMER_ENGINE -->|at 时间到达| TIMER_FIRE
+    TIMER_FIRE -->|注入消息| MAIN_CHAT

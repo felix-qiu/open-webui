@@ -1,0 +1,130 @@
+graph TB
+    subgraph "阶段一：请求入口与验证 [main.py]"
+        A["用户请求<br/>POST /api/chat/completions"] --> B["JWT 认证<br/>get_verified_user()"]
+        B --> C["模型查找与访问控制<br/>check_model_access()"]
+        C --> D{"新聊天?"}
+        D -->|"是"| E["创建聊天记录<br/>Chats.insert_new_chat()"]
+        D -->|"否"| F["验证所有权 + 保存用户消息<br/>Chats.upsert_message()"]
+        E --> G["构建 metadata 字典"]
+        F --> G
+    end
+
+    subgraph "阶段二：Payload 预处理管道 [middleware.py]"
+        G --> H["Arena 模型选择"]
+        H --> I["参数应用<br/>apply_params_to_form_data()"]
+        I --> J["数据库消息加载<br/>load_messages_from_db()"]
+        J --> K["上下文压缩<br/>compact_messages_for_request()"]
+        K --> L["Pipeline Inlet 过滤<br/>process_pipeline_inlet_filter()"]
+        L --> M["过滤函数 Inlet<br/>process_filter_functions()"]
+        
+        M --> N{"功能特性检测"}
+        N --> N1["记忆上下文注入"]
+        N --> N2["Web 搜索"]
+        N --> N3["图像生成"]
+        N --> N4["代码解释器提示"]
+        
+        N1 --> O["工具解析与注册"]
+        N2 --> O
+        N3 --> O
+        N4 --> O
+        
+        O --> O1["MCP 工具连接"]
+        O --> O2["数据库工具加载"]
+        O --> O3["终端工具"]
+        O --> O4["直接工具服务器"]
+        O --> O5["内置工具注入<br/>get_builtin_tools()"]
+        
+        O5 --> P["文件上下文处理<br/>chat_completion_files_handler()"]
+        P --> Q["来源上下文注入"]
+    end
+
+    subgraph "阶段三：LLM 生成 [chat.py]"
+        Q --> R["generate_chat_completion()"]
+        R --> S{"模型类型"}
+        S -->|"Ollama"| T["Ollama API 调用"]
+        S -->|"OpenAI"| U["OpenAI API 调用"]
+        S -->|"Pipeline"| V["Pipeline 过滤"]
+        S -->|"Direct"| W["直接连接"]
+        T --> X["StreamingResponse (SSE)"]
+        U --> X
+        V --> X
+        W --> X
+    end
+
+    subgraph "阶段四：响应处理与工具循环 [middleware.py]"
+        X --> Y["streaming_chat_response_handler()"]
+        Y --> Z["解析 SSE 事件"]
+        Z --> AA["标签检测<br/>reasoning / code_interpreter"]
+        AA --> AB["实时保存到 DB"]
+        
+        AB --> AC{"检测到 tool_calls?"}
+        AC -->|"是"| AD["工具调用循环开始"]
+        AC -->|"否"| AE["继续流式输出"]
+        
+        AD --> AF["分离 delegate_task 调用"]
+        AF --> AG["并行执行其他工具"]
+        
+        AG --> AH{"工具类型"}
+        AH -->|"内置工具"| AI["执行内置函数"]
+        AH -->|"MCP 工具"| AJ["调用 MCP 服务器"]
+        AH -->|"直接工具"| AK["通过 WebSocket 调用"]
+        AH -->|"delegate_task"| AL["委派子代理"]
+        
+        AI --> AM["处理工具结果"]
+        AJ --> AM
+        AK --> AM
+        AL --> AM
+        
+        AM --> AN["提取引用来源"]
+        AN --> AO["更新 output 结构"]
+        AO --> AP["发送工具结果给 LLM"]
+        AP --> AQ["LLM 继续生成"]
+        AQ --> AR{"更多 tool_calls?"}
+        AR -->|"是"| AD
+        AR -->|"否"| AS["代码解释器检测"]
+        
+        AS --> AT{"检测到代码块?"}
+        AT -->|"是"| AU["执行代码<br/>pyodide / jupyter"]
+        AU --> AV["发送结果给 LLM"]
+        AV --> AW["LLM 继续生成"]
+        AT -->|"否"| AX["过滤函数 Outlet"]
+        AW --> AX
+        
+        AX --> AY["最终输出整理"]
+    end
+
+    subgraph "阶段五：后台任务 [middleware.py]"
+        AY --> AZ["background_tasks_handler()"]
+        AZ --> BA{"任务类型"}
+        BA -->|"标题生成"| BB["为聊天生成标题"]
+        BA -->|"标签生成"| BC["为消息生成标签"]
+        BA -->|"后续问题"| BD["生成建议问题"]
+        BA -->|"子代理结果"| BE["process_pending_internal_messages()"]
+        
+        BB --> BF["完成"]
+        BC --> BF
+        BD --> BF
+        BE --> BF
+    end
+
+    subgraph "子代理系统 [subagents.py]"
+        AL --> CA["delegate() 引擎"]
+        CA --> CB{"模式选择"}
+        CB -->|"前台"| CC["创建子聊天会话"]
+        CB -->|"后台"| CD["创建子聊天会话"]
+        
+        CC --> CE["同步执行任务"]
+        CE --> CF["返回结果摘要"]
+        CF --> AM
+        
+        CD --> CG["立即返回 dispatch"]
+        CG --> AM
+        CD --> CH["后台独立执行"]
+        CH --> CI["完成后构建结果消息"]
+        CI --> CJ["注入 pending 消息到主聊天"]
+        CJ --> BE
+    end
+
+    style A fill:#4A90D9,color:#fff
+    style X fill:#4A90D9,color:#fff
+    style BF fill:#27AE60,color:#fff

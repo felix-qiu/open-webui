@@ -1,0 +1,77 @@
+graph TB
+    subgraph "用户层"
+        Browser[浏览器 / PWA]
+        Mobile[移动端 WebView]
+    end
+
+    subgraph "前端 Svelte SPA"
+        Router["SvelteKit Router<br/>src/routes/"]
+        Components["UI 组件库<br/>src/lib/components/"]
+        Stores["状态管理<br/>src/lib/stores/"]
+        APIs["API 客户端层<br/>src/lib/apis/"]
+    end
+
+    subgraph "反向代理 / 网关"
+        Nginx["Nginx / Caddy<br/>静态文件 + 反向代理"]
+        WS["WebSocket 网关<br/>/ws → Socket.IO"]
+    end
+
+    subgraph "后端 FastAPI"
+        Main["main.py<br/>FastAPI 应用入口"]
+        Middleware["中间件栈<br/>Auth / CORS / Audit / Security"]
+        Routers["REST API 路由层<br/>backend/open_webui/routers/"]
+        ChatEngine["聊天引擎<br/>utils/chat.py + utils/middleware.py"]
+        Models["数据模型层<br/>backend/open_webui/models/"]
+        Retrieval["RAG 检索系统<br/>backend/open_webui/retrieval/"]
+        Tools["工具系统<br/>tools/ + utils/tools.py"]
+        Functions["函数管道<br/>functions.py + utils/filter.py"]
+        SocketIO["Socket.IO 服务<br/>socket/main.py"]
+    end
+
+    subgraph "外部服务"
+        Ollama["Ollama<br/>本地 LLM"]
+        OpenAI["OpenAI API<br/>兼容服务"]
+        Pipelines["Pipelines<br/>管道服务"]
+        ToolServers["Tool Servers<br/>MCP / OpenAPI"]
+        VectorDB["向量数据库<br/>Chroma / Qdrant / PGVector"]
+        Redis["Redis<br/>会话 / 任务队列"]
+    end
+
+    subgraph "数据存储"
+        SQLite["SQLite / PostgreSQL<br/>聊天记录 / 用户 / 配置"]
+        FileStore["文件存储<br/>本地 / S3"]
+    end
+
+    Browser --> Nginx
+    Mobile --> Nginx
+    Nginx -->|SPA 路由| Router
+    Nginx -->|API 请求| Main
+    Nginx -->|WebSocket| WS
+
+    Router --> Components
+    Router --> Stores
+    Components --> APIs
+    APIs -->|HTTP| Main
+
+    Main --> Middleware
+    Main --> Routers
+    Main --> ModelsEngine
+    Main --> Socket
+
+    Routers --> ModelsEngine
+    ModelsEngine --> Models
+    ModelsEngine --> Retrieval
+    ModelsEngine --> Tools
+    ModelsEngine --> Socket
+    ModelsEngine -->|LLM 调用| Ollama
+    ModelsEngine -->|LLM 调用| OpenAI
+    ModelsEngine -->|管道过滤| Pipelines
+
+    Tools --> ToolServers
+    Retrieval --> VectorDB
+    Retrieval -->|Web 搜索| WebSearch[搜索引擎]
+
+    Models --> SQLite
+    Models --> FileStore
+    Socket --> Redis
+    Socket -->|实时推送| Browser

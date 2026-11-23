@@ -1,0 +1,152 @@
+graph TB
+    subgraph "应用入口"
+        MAIN["main.py<br/>FastAPI 应用"]
+        CONFIG["config.py<br/>配置加载"]
+        ENV["env.py<br/>环境变量"]
+    end
+
+    subgraph "路由层 (Routers)"
+        CHATS_R["routers/chats.py<br/>聊天 CRUD"]
+        CHAT_COMP["/api/chat/completions<br/>聊天补全"]
+        OLLAMA_R["routers/ollama.py<br/>Ollama 代理"]
+        OPENAI_R["routers/openai.py<br/>OpenAI 代理"]
+        AUTHS_R["routers/auths.py<br/>认证"]
+        USERS_R["routers/users.py<br/>用户管理"]
+        MODELS_R["routers/models.py<br/>模型管理"]
+        RETRIEVAL_R["routers/retrieval.py<br/>RAG 检索"]
+        FILES_R["routers/files.py<br/>文件管理"]
+        TOOLS_R["routers/tools.py<br/>工具管理"]
+        FUNCTIONS_R["routers/functions.py<br/>函数管理"]
+        KNOWLEDGE_R["routers/knowledge.py<br/>知识库"]
+        CONFIGS_R["routers/configs.py<br/>系统配置"]
+        IMAGES_R["routers/images.py<br/>图像生成"]
+        AUDIO_R["routers/audio.py<br/>语音"]
+        TASKS_R["routers/tasks.py<br/>后台任务"]
+        CHANNELS_R["routers/channels.py<br/>频道"]
+        EVALUATIONS_R["routers/evaluations.py<br/>模型评估"]
+        ANALYTICS_R["routers/analytics.py<br/>分析"]
+        AUTOMATIONS_R["routers/automations.py<br/>自动化"]
+        CALENDAR_R["routers/calendar.py<br/>日历"]
+        NOTES_R["routers/notes.py<br/>笔记"]
+        MEMORIES_R["routers/memories.py<br/>记忆"]
+        PIPELINES_R["routers/pipelines.py<br/>管道"]
+        SCIM_R["routers/scim.py<br/>SCIM 身份管理"]
+    end
+
+    subgraph "核心引擎"
+        CHAT_UTIL["utils/chat.py<br/>聊天补全引擎"]
+        MIDDLEWARE["utils/middleware.py<br/>请求处理管道"]
+        PAYLOAD["utils/payload.py<br/>负载转换"]
+        RESPONSE["utils/response.py<br/>响应转换"]
+        FILTER["utils/filter.py<br/>过滤函数"]
+        MODELS_UTIL["utils/models.py<br/>模型管理"]
+        EMBEDDINGS["utils/embeddings.py<br/>嵌入生成"]
+        SESSION_POOL["utils/session_pool.py<br/>会话池"]
+        SUBAGENTS["utils/subagents.py<br/>子代理"]
+        MCP_CLIENT["utils/mcp/client.py<br/>MCP 客户端"]
+        TOOLS_UTIL["utils/tools.py<br/>工具服务器"]
+        CONTEXT_COMPACT["utils/context_compaction.py<br/>上下文压缩"]
+        CODE_INTERPRETER["utils/code_interpreter.py<br/>代码解释器"]
+    end
+
+    subgraph "数据模型层 (Models)"
+        M_CHATS["models/chats.py<br/>聊天"]
+        M_MESSAGES["models/messages.py<br/>消息"]
+        M_USERS["models/users.py<br/>用户"]
+        M_MODELS["models/models.py<br/>模型"]
+        M_FILES["models/files.py<br/>文件"]
+        M_CONFIG["models/config.py<br/>配置"]
+        M_KNOWLEDGE["models/knowledge.py<br/>知识库"]
+        M_TOOLS["models/tools.py<br/>工具"]
+        M_FUNCTIONS["models/functions.py<br/>函数"]
+        M_CHANNELS["models/channels.py<br/>频道"]
+        M_GROUPS["models/groups.py<br/>用户组"]
+        M_FOLDERS["models/folders.py<br/>文件夹"]
+        M_TAGS["models/tags.py<br/>标签"]
+        M_MEMORIES["models/memories.py<br/>记忆"]
+        M_NOTES["models/notes.py<br/>笔记"]
+        M_AUTOMATIONS["models/automations.py<br/>自动化"]
+        M_EVALUATIONS["models/feedbacks.py<br/>评估反馈"]
+    end
+
+    subgraph "RAG 检索系统"
+        RET_MAIN["retrieval/utils.py<br/>检索主逻辑"]
+        VEC_MAIN["retrieval/vector/main.py<br/>向量存储"]
+        VEC_FACTORY["retrieval/vector/factory.py<br/>向量工厂"]
+        LOADERS["retrieval/loaders/main.py<br/>文档加载器"]
+        WEB_SEARCH["retrieval/web/main.py<br/>Web 搜索"]
+        RERANK["retrieval/models/external.py<br/>重排序"]
+    end
+
+    subgraph "向量数据库实现"
+        CHROMA["vector/dbs/chroma.py"]
+        QDRANT["vector/dbs/qdrant.py"]
+        PGVECTOR["vector/dbs/pgvector.py"]
+        MILVUS["vector/dbs/milvus.py"]
+        ELASTIC["vector/dbs/elasticsearch.py"]
+        PINECONE["vector/dbs/pinecone.py"]
+        WEAVIATE["vector/dbs/weaviate.py"]
+    end
+
+    subgraph "基础设施"
+        DB["internal/db.py<br/>数据库引擎"]
+        AUTH["utils/auth.py<br/>JWT 认证"]
+        AUDIT["utils/audit.py<br/>审计日志"]
+        REDIS["utils/redis.py<br/>Redis 客户端"]
+        EVENTS["events.py<br/>事件系统"]
+        TASKS["tasks.py<br/>任务管理"]
+        SOCKET["socket/main.py<br/>Socket.IO"]
+        STORAGE["storage/provider.py<br/>文件存储"]
+    end
+
+    MAIN --> CONFIG
+    MAIN --> ENV
+    MAIN --> ROUTERS
+    MAIN --> MIDDLEWARE_STACK["中间件栈"]
+    MAIN --> SOCKET
+    MAIN --> EVENTS
+    MAIN --> TASKS
+
+    CHAT_COMP --> CHAT_UTIL
+    CHAT_COMP --> MIDDLEWARE
+    CHAT_COMP --> MODELS_UTIL
+
+    CHAT_UTIL --> OLLAMA_R
+    CHAT_UTIL --> OPENAI_R
+    CHAT_UTIL --> PIPELINES_R
+    CHAT_UTIL --> FILTER
+    CHAT_UTIL --> FUNCTIONS["functions.py"]
+
+    MIDDLEWARE --> FILTER
+    MIDDLEWARE --> RETRIEVAL_R
+    MIDDLEWARE --> TOOLS_UTIL
+    MIDDLEWARE --> MCP_CLIENT
+    MIDDLEWARE --> CODE_INTERPRETER
+    MIDDLEWARE --> CONTEXT_COMPACT
+    MIDDLEWARE --> SUBAGENTS
+    MIDDLEWARE --> IMAGES_R
+    MIDDLEWARE --> TASKS_R
+
+    ROUTERS --> MODELS
+    ROUTERS --> CHAT_UTIL
+
+    RETRIEVAL_R --> RET_MAIN
+    RET_MAIN --> VEC_MAIN
+    RET_MAIN --> LOADERS
+    RET_MAIN --> WEB_SEARCH
+    RET_MAIN --> RERANKERS
+    VEC_MAIN --> VEC_FACTORY
+    VEC_FACTORY --> CHROMA
+    VEC_FACTORY --> QDRANT
+    VEC_FACTORY --> PGVECTOR
+    VEC_FACTORY --> MILVUS
+    VEC_FACTORY --> ELASTIC
+    VEC_FACTORY --> PINECONE
+    VEC_FACTORY --> WEAVIATE
+
+    MODELS --> DB
+    AUTH --> DB
+    SOCKET --> SESSION_POOL
+    SOCKET --> REDIS
+    TASKS --> REDIS
+    EVENTS --> REDIS

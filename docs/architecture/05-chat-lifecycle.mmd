@@ -1,0 +1,114 @@
+sequenceDiagram
+    participant User as 用户
+    participant FE as 前端 Svelte
+    participant API as FastAPI<br/>/api/chat/completions
+    participant MW as 中间件管道<br/>utils/middleware.py
+    participant Filter as 过滤函数<br/>utils/filter.py
+    participant RAG as RAG 检索<br/>retrieval/
+    participant Tools as 工具系统<br/>tools/
+    participant LLM as LLM Provider<br/>Ollama/OpenAI
+    participant DB as 数据库
+
+    User->>FE: 输入消息并发送
+    FE->>FE: 创建临时消息 ID
+    FE->>API: POST /api/chat/completions<br/>{model, messages, stream:true}
+
+    Note over API: main.py - chat_completion()
+
+    API->>API: 1. 验证用户 (JWT)
+    API->>API: 2. 解析 model_id
+    API->>API: 3. 检查模型访问权限
+    API->>API: 4. 创建/更新聊天记录
+    API->>DB: 插入用户消息
+    API->>DB: 插入助手占位消息
+
+    Note over API: 5. 创建后台任务
+
+    API->>MW: process_chat_payload()
+
+    Note over MW: 请求处理管道
+
+    MW->>MW: 6. 解析 features<br/>(web_search, code_interpreter 等)
+
+    alt 启用 Web 搜索
+        MW->>RAG: process_web_search()
+        RAG->>RAG: 调用搜索引擎
+        RAG-->>MW: 返回搜索结果
+        MW->>MW: 注入搜索上下文到 messages
+    end
+
+    alt 启用 RAG
+        MW->>RAG: 检索知识库
+        RAG->>RAG: 向量检索 + 重排序
+        RAG-->>MW: 返回相关文档
+        MW->>MW: 注入文档上下文
+    end
+
+    MW->>Filter: process_filter_functions()<br/>(inlet filters)
+
+    Note over Filter: 用户自定义函数管道
+
+    Filter->>Filter: 执行 inlet 过滤函数
+    Filter-->>MW: 返回修改后的 payload
+
+    MW->>MW: 7. 上下文压缩<br/>(compact_messages_for_request)
+    MW->>MW: 8. 构建最终请求
+
+    MW-->>API: 返回处理后的 form_data
+
+    API->>CHAT: generate_chat_completion()
+
+    Note over CHAT: utils/chat.py
+
+    alt Ollama 模型
+        CHAT->>OLLAMA: generate_ollama_chat_completion()
+        OLLAMA->>Ollama: /api/chat (streaming)
+        Ollama-->>OLLAMA: SSE stream
+        OLLAMA-->>CHAT: StreamingResponse
+    else OpenAI 兼容
+        CHAT->>OpenAI: generate_openai_chat_completion()
+        OpenAI->>OpenAI: /v1/chat/completions
+        OpenAI-->>CHAT: SSE stream
+    else 管道模型
+        CHAT->>Pipelines: process_pipeline_inlet_filter()
+        Pipelines->>LLM: 转发请求
+        LLM-->>Pipelines: 响应
+        Pipelines-->>CHAT: 过滤后响应
+    end
+
+    CHAT-->>API: StreamingResponse
+
+    Note over API: 9. 处理流式响应
+
+    API->>MW: process_chat_response()
+
+    MW->>MW: 10. 实时保存消息块
+    MW->>DB: upsert_message_to_chat_by_id_and_message_id()
+
+    alt 启用工具调用
+        MW->>MW: 检测 tool_calls
+        MW->>Tools: 执行工具
+        Tools-->>MW: 工具结果
+        MW->>LLM: 发送工具结果
+        LLM-->>MW: 继续生成
+    end
+
+    alt 启用代码解释器
+        MW->>MW: 检测代码块
+        MW->>CODE: execute_code_jupyter()
+        CODE-->>MW: 执行结果
+        MW->>LLM: 发送执行结果
+    end
+
+    MW->>Filter: process_filter_functions()<br/>(outlet filters)
+    MW->>MW: 11. 生成标题/标签/后续问题
+
+    MW-->>API: 完成处理
+
+    API-->>FE: SSE stream (实时)
+
+    FE->>FE: 解析 SSE 事件
+    FE->>FE: 更新消息 UI
+    FE->>FE: 渲染 Markdown / 代码块 / 引用
+
+    User->>FE: 看到流式输出

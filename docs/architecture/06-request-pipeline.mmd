@@ -1,0 +1,28 @@
+graph LR
+    subgraph "输入管道 (Inlet)"
+        A["原始请求"] --> B["process_chat_payload()"]
+        B --> C["Web 搜索注入"]
+        B --> D["RAG 检索注入"]
+        B --> E["记忆上下文注入"]
+        B --> F["Inlet 过滤函数"]
+        F --> G["上下文压缩"]
+        G --> H["工具服务器初始化"]
+    end
+
+    subgraph "生成"
+        H --> I["generate_chat_completion()"]
+        I --> J["Ollama / OpenAI / Pipeline"]
+    end
+
+    subgraph "输出管道 (Outlet)"
+        J --> K["process_chat_response()"]
+        K --> L["流式保存到 DB"]
+        K --> M["工具调用循环"]
+        M --> N["代码解释器"]
+        M --> O["Outlet 过滤函数"]
+        O --> P["标题/标签生成"]
+        P --> Q["后续问题生成"]
+        Q --> R["子代理处理"]
+    end
+
+    R --> S["最终 SSE 响应"]

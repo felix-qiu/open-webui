@@ -1,0 +1,27 @@
+sequenceDiagram
+    participant MW as Middleware
+    participant LLM as LLM
+    participant Tools as 工具系统
+    participant MCP as MCP Client
+    participant Code as 代码解释器
+
+    MW->>LLM: 发送消息（含工具定义）
+    LLM-->>MW: 响应含 tool_calls
+
+    loop 最多 N 次迭代
+        MW->>MW: 解析 tool_calls
+
+        alt 内置工具
+            MW->>Tools: 执行内置工具
+            Tools-->>MW: 结果
+        else MCP 工具
+            MW->>MCP: 调用 MCP 工具
+            MCP-->>MW: 结果
+        else 代码解释器
+            MW->>Code: execute_code_jupyter()
+            Code-->>MW: 执行结果
+        end
+
+        MW->>LLM: 发送工具结果
+        LLM-->>MW: 继续生成 / 更多 tool_calls
+    end

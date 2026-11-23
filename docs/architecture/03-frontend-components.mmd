@@ -1,0 +1,59 @@
+graph TB
+    subgraph "核心组件"
+        AppSidebar["AppSidebar.svelte<br/>应用侧边栏"]
+        ChatView["Chat.svelte<br/>聊天主视图"]
+        MessageList["Messages/Message.svelte<br/>消息列表"]
+        InputArea["ChatInput.svelte<br/>输入区域"]
+    end
+
+    subgraph "消息渲染"
+        UserMessage["Messages/UserMessage.svelte"]
+        AssistantMessage["Messages/AssistantMessage.svelte"]
+        MarkdownRenderer["Messages/Markdown/"]
+        CodeBlock["CodeBlock.svelte"]
+        Citations["Messages/Citations.svelte"]
+        Artifacts["Artifacts.svelte"]
+    end
+
+    subgraph "设置面板"
+        Settings["Settings/"]
+        General["General.svelte"]
+        Connections["Connections.svelte"]
+        Personalization["Personalization.svelte"]
+        Audio["Audio.svelte"]
+        Account["Account.svelte"]
+    end
+
+    subgraph "API 客户端层"
+        APIIndex["apis/index.ts<br/>统一导出"]
+        ChatAPI["apis/chats/index.ts"]
+        ModelAPI["apis/models/index.ts"]
+        AuthAPI["apis/auths/index.ts"]
+        FileAPI["apis/files/index.ts"]
+        RetrievalAPI["apis/retrieval/index.ts"]
+        ToolAPI["apis/tools/index.ts"]
+    end
+
+    subgraph "状态管理"
+        Stores["stores/index.ts<br/>全局状态"]
+        ChatListStore["stores/chatList.ts"]
+        UserStore["stores/user"]
+        ConfigStore["stores/config"]
+    end
+
+    ChatView --> MessageList
+    ChatView --> InputArea
+    MessageList --> UserMessage
+    MessageList --> AssistantMessage
+    AssistantMessage --> MarkdownRenderer
+    AssistantMessage --> Citations
+    AssistantMessage --> Artifacts
+
+    AppSidebar --> Settings
+
+    APIIndex --> ChatAPI
+    APIIndex --> ModelAPI
+    APIIndex --> AuthAPI
+    APIIndex --> FileAPI
+    APIIndex --> RetrievalAPI
+    APIIndex --> ToolAPI

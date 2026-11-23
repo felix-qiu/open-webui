@@ -1,0 +1,32 @@
+graph TB
+    subgraph "Agent 生命周期"
+        A["用户请求"] --> B["inlet 过滤<br/>Filter.inlet()"]
+        B --> C["工具注册<br/>Tool 注入"]
+        C --> D["LLM 生成<br/>Pipe.pipe()"]
+        D --> E["流式处理<br/>Filter.stream()"]
+        E --> F["工具调用循环<br/>Tool 执行"]
+        F --> G["outlet 过滤<br/>Filter.outlet()"]
+        G --> H["后台任务"]
+    end
+
+    subgraph "扩展类型"
+        FILTER["Filter<br/>inlet/outlet/stream"]
+        TOOL["Tool<br/>自定义函数"]
+        PIPE["Pipe<br/>替代 LLM"]
+        ACTION["Action<br/>Webhook"]
+        EVENT["Event<br/>事件监听"]
+    end
+
+    FILTER --> B
+    FILTER --> E
+    FILTER --> G
+    TOOL --> F
+    PIPE --> D
+    ACTION --> A
+    EVENT --> A
+
+    style FILTER fill:#27AE60,color:#fff
+    style TOOL fill:#E67E22,color:#fff
+    style PIPE fill:#4A90D9,color:#fff
+    style ACTION fill:#9B59B6,color:#fff
+    style EVENT fill:#E74C3C,color:#fff
