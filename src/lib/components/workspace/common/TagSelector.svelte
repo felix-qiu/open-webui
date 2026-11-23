@@ -6,17 +6,17 @@
 	import XMark from '$lib/components/icons/XMark.svelte';
 	import Select from '$lib/components/common/Select.svelte';
 
-	const i18n = getContext('i18n');
+	const i18n = getContext<typeof import('$lib/i18n').default>('i18n');
 
 	export let value = '';
-	export let placeholder = $i18n.t('Tag');
+	export let placeholder: string | undefined = undefined;
 	export let align = 'start';
 	export let onChange: (value: string) => void = () => {};
 	export let triggerClass =
-		'relative h-8 w-full flex items-center gap-0.5 px-1.5 py-1.5 bg-transparent rounded-xl text-[13px] font-normal text-gray-700 transition hover:text-gray-900 dark:text-gray-200 dark:hover:text-gray-100';
+		'relative h-8 w-full flex items-center gap-0.5 px-1.5 py-1.5 bg-transparent rounded-xl text-[0.8125rem] font-normal text-gray-700 transition hover:text-gray-900 dark:text-gray-200 dark:hover:text-gray-100';
 	export let itemClass =
-		'flex h-[1.6875rem] w-full cursor-pointer items-center gap-2 rounded-xl bg-transparent px-2 text-[13px] capitalize hover:bg-gray-50/40 hover:text-gray-900 dark:hover:bg-gray-800/40 dark:hover:text-gray-100';
-	export let contentClass = 'min-w-[170px]';
+		'flex h-[1.6875rem] w-full cursor-pointer items-center gap-2 rounded-xl bg-transparent px-2 text-[0.8125rem] capitalize hover:bg-gray-50/40 hover:text-gray-900 dark:hover:bg-gray-800/40 dark:hover:text-gray-100';
+	export let contentClass = 'min-w-[10.625rem]';
 
 	export let items = [];
 </script>
@@ -24,7 +24,7 @@
 <Select
 	bind:value
 	{items}
-	{placeholder}
+	placeholder={placeholder ?? $i18n.t('Tag')}
 	{align}
 	{triggerClass}
 	{itemClass}
@@ -38,21 +38,12 @@
 			{#if value}
 				{selectedLabel}
 			{:else}
-				{placeholder}
+				{placeholder ?? $i18n.t('Tag')}
 			{/if}
 		</div>
 
 		{#if value}
-			<button
-				class="outline-none"
-				type="button"
-				on:click|stopPropagation={() => {
-					value = '';
-					onChange(value);
-				}}
-			>
-				<XMark className="size-3.5" />
-			</button>
+			<div class="size-3.5 shrink-0" />
 		{:else}
 			<ChevronDown className="size-2.5" strokeWidth="2.5" />
 		{/if}
@@ -65,6 +56,20 @@
 		</div>
 	</svelte:fragment>
 </Select>
+
+{#if value}
+	<button
+		class="focus-ring relative -ml-[1.375rem] mr-1.5 self-center rounded-sm outline-none"
+		type="button"
+		aria-label={$i18n.t('Clear filters')}
+		on:click={() => {
+			value = '';
+			onChange(value);
+		}}
+	>
+		<XMark className="size-3.5" />
+	</button>
+{/if}
 
 <!-- <button
 	class="min-w-fit outline-none p-1.5 {selectedTag === ''

@@ -1,12 +1,14 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
-	import { chatId } from '$lib/stores';
 
 	import Dropdown from '$lib/components/common/Dropdown.svelte';
 	import DropdownMenu from '$lib/components/common/DropdownMenu.svelte';
 	import ChevronRight from '$lib/components/icons/ChevronRight.svelte';
 	import EditPencilIcon from '$lib/components/layout/Sidebar/icons/EditPencil.svelte';
 	import EmbeddedChatHistoryItem from './EmbeddedChatHistoryItem.svelte';
+	import { getChatContext } from '$lib/components/chat/context';
+
+	const { chatId } = getChatContext();
 
 	const i18n = getContext('i18n');
 
@@ -35,12 +37,12 @@
 >
 	<button
 		type="button"
-		class="group flex min-w-0 items-center gap-1 text-[13px] font-normal text-gray-600 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
+		class="group flex min-w-0 items-center gap-1 text-[0.8125rem] font-normal text-gray-600 transition hover:text-gray-900 dark:text-gray-300 dark:hover:text-white"
 		aria-label={$i18n.t('Chat history')}
 	>
 		<span class="min-w-0 truncate">{title}</span>
 		<ChevronRight
-			className="size-3.5 shrink-0 text-gray-400/70 opacity-0 transition-opacity group-hover:opacity-100 dark:text-gray-500/70"
+			className="size-3.5 shrink-0 text-gray-400/70 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100 dark:text-gray-500/70"
 			strokeWidth="2"
 		/>
 	</button>
@@ -92,7 +94,7 @@
 					/>
 				{/each}
 			{:else}
-				<div class="px-2 py-1.5 text-[13px] text-gray-400 dark:text-gray-500">
+				<div class="px-2 py-1.5 text-[0.8125rem] text-gray-400 dark:text-gray-500">
 					{$i18n.t('No chat history')}
 				</div>
 			{/if}

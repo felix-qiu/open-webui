@@ -148,7 +148,8 @@ export const getUsers = async (
 	query?: string,
 	orderBy?: string,
 	direction?: string,
-	page = 1
+	page = 1,
+	signal?: AbortSignal
 ) => {
 	let error = null;
 	let res = null;
@@ -171,6 +172,7 @@ export const getUsers = async (
 
 	res = await fetch(`${WEBUI_API_BASE_URL}/users/?${searchParams.toString()}`, {
 		method: 'GET',
+		signal,
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${token}`
@@ -181,6 +183,7 @@ export const getUsers = async (
 			return res.json();
 		})
 		.catch((err) => {
+			if (signal?.aborted) return null;
 			console.error(err);
 			error = err.detail;
 			return null;
@@ -198,7 +201,8 @@ export const searchUsers = async (
 	query?: string,
 	orderBy?: string,
 	direction?: string,
-	page = 1
+	page = 1,
+	signal?: AbortSignal
 ) => {
 	let error = null;
 	let res = null;
@@ -221,6 +225,7 @@ export const searchUsers = async (
 
 	res = await fetch(`${WEBUI_API_BASE_URL}/users/search?${searchParams.toString()}`, {
 		method: 'GET',
+		signal,
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${token}`
@@ -231,6 +236,7 @@ export const searchUsers = async (
 			return res.json();
 		})
 		.catch((err) => {
+			if (signal?.aborted) return null;
 			console.error(err);
 			error = err.detail;
 			return null;
@@ -271,9 +277,9 @@ export const getAllUsers = async (token: string) => {
 	return res;
 };
 
-export const getUserSettings = async (token: string) => {
+export const getUserSettings = async (token: string, raw = false) => {
 	let error = null;
-	const res = await fetch(`${WEBUI_API_BASE_URL}/users/user/settings`, {
+	const res = await fetch(`${WEBUI_API_BASE_URL}/users/user/settings${raw ? '?raw=true' : ''}`, {
 		method: 'GET',
 		headers: {
 			'Content-Type': 'application/json',
@@ -286,7 +292,7 @@ export const getUserSettings = async (token: string) => {
 		})
 		.catch((err) => {
 			console.error(err);
-			error = err.detail;
+			error = err?.detail ?? err;
 			return null;
 		});
 
@@ -410,11 +416,12 @@ export const getUserInfo = async (token: string) => {
 	return res;
 };
 
-export const updateUserInfo = async (token: string, info: object) => {
+export const updateUserInfo = async (token: string, info: object, signal?: AbortSignal) => {
 	let error = null;
 
 	const res = await fetch(`${WEBUI_API_BASE_URL}/users/user/info/update`, {
 		method: 'POST',
+		signal,
 		headers: {
 			'Content-Type': 'application/json',
 			Authorization: `Bearer ${token}`
@@ -503,7 +510,10 @@ export const getAndUpdateUserLocation = async (token: string) => {
 	});
 
 	if (location) {
-		await updateUserInfo(token, { location: location });
+		// Saving optional context must not hold up sending a message.
+		void updateUserInfo(token, { location }, AbortSignal.timeout(5_000)).catch((error) => {
+			console.error('Error saving user location:', error);
+		});
 		return location;
 	} else {
 		console.info('Failed to get user location');
@@ -743,4 +753,34 @@ export const getUserUsage = async (
 	}
 
 	return res;
+};
+
+export const revokeUserSessions = async (token: string, userId: string) => {
+	const response = await fetch(`${WEBUI_API_BASE_URL}/users/${userId}/sessions/revoke`, {
+		method: 'POST',
+		headers: { Authorization: `Bearer ${token}` }
+	});
+	const result = await response.json();
+	if (!response.ok) throw new Error(result.detail || 'Failed to revoke sessions');
+	return result;
+};
+
+export const rotateUserAPIKeyById = async (token: string, userId: string): Promise<string> => {
+	const response = await fetch(`${WEBUI_API_BASE_URL}/users/${userId}/api_key/rotate`, {
+		method: 'POST',
+		headers: { Authorization: `Bearer ${token}` }
+	});
+	const result = await response.json();
+	if (!response.ok) throw new Error(result.detail || 'Failed to rotate API key');
+	return result.api_key;
+};
+
+export const deleteUserAPIKeyById = async (token: string, userId: string) => {
+	const response = await fetch(`${WEBUI_API_BASE_URL}/users/${userId}/api_key`, {
+		method: 'DELETE',
+		headers: { Authorization: `Bearer ${token}` }
+	});
+	const result = await response.json();
+	if (!response.ok) throw new Error(result.detail || 'Failed to delete API key');
+	return result;
 };

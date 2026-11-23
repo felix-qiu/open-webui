@@ -41,7 +41,7 @@
 	const closeModal = async () => {
 		localStorage.version = $config.version;
 		await settings.set({ ...$settings, ...{ version: $config.version } });
-		await updateUserSettings(localStorage.token, { ui: $settings });
+		await updateUserSettings(localStorage.token, { ui: { version: $config.version } });
 		show = false;
 	};
 
@@ -83,6 +83,7 @@
 </script>
 
 <Modal
+	ariaLabel={`${$i18n.t("What's New in")} ${$WEBUI_NAME}`}
 	bind:show
 	size="lg"
 	className="bg-white dark:bg-gray-900 rounded-3xl overflow-hidden"
@@ -93,6 +94,9 @@
 			class="flex shrink-0 items-start justify-between gap-4 px-4 pb-2.5 pt-3.5 dark:text-white text-black"
 		>
 			<div class="min-w-0">
+				<!-- LICENSE covers this Open WebUI release identifier.
+				Do not alter, remove, obscure, or replace it except as LICENSE permits:
+				https://docs.openwebui.com/license. -->
 				<h2 class="m-0 truncate text-base font-normal">
 					{$i18n.t("What's New in")}
 					{$WEBUI_NAME}
@@ -105,7 +109,7 @@
 			</div>
 
 			<button
-				class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 dark:text-gray-500 dark:hover:bg-white/10 dark:hover:text-gray-200"
+				class="flex h-8 shrink-0 items-center justify-center rounded-xl text-gray-400 transition hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 px-0"
 				on:click={closeModal}
 				aria-label={$i18n.t('Close')}
 			>
@@ -151,7 +155,7 @@
 													class="mt-[0.6em] h-1 w-1 shrink-0 rounded-full bg-gray-300 dark:bg-gray-700"
 												></span>
 												<div
-													class="min-w-0 markdown-prose-sm !max-w-none !text-[0.8125rem] text-gray-600 dark:text-gray-300 [&_*]:!my-0 [&_b]:!font-normal [&_strong]:!font-normal"
+													class="min-w-0 markdown-prose-sm list-none !max-w-none !text-[0.8125rem] text-gray-600 dark:text-gray-300 [&_*]:!my-0 [&_b]:!font-normal [&_strong]:!font-normal"
 												>
 													<!-- eslint-disable-next-line svelte/no-at-html-tags -->
 													{@html DOMPurify.sanitize(entry?.raw)}

@@ -2,13 +2,14 @@
 	import { onMount, tick, getContext } from 'svelte';
 	import { createEventDispatcher } from 'svelte';
 
-	import { mobile, models, settings } from '$lib/stores';
+	import { mobile, settings, visibleControls } from '$lib/stores';
 
 	import { generateMoACompletion } from '$lib/apis';
 	import { updateChatById } from '$lib/apis/chats';
 	import { createOpenAITextStream } from '$lib/apis/streaming';
 
 	import ResponseMessage from './ResponseMessage.svelte';
+	import { getOutputText } from './structuredOutput';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import Merge from '$lib/components/icons/Merge.svelte';
 
@@ -18,8 +19,15 @@
 	import ProfileImage from './ProfileImage.svelte';
 	import { WEBUI_BASE_URL } from '$lib/constants';
 	import equal from 'fast-deep-equal';
-	import { formatMessageTimestamp, formatMessageTimestampFull } from '$lib/utils';
-	const i18n = getContext('i18n');
+	import {
+		formatMessageTimestamp,
+		formatMessageTimestampFull,
+		getDeepestChildId
+	} from '$lib/utils';
+	import { getChatContext } from '$lib/components/chat/context';
+
+	const { models } = getChatContext();
+	const i18n = getContext<typeof import('$lib/i18n').default>('i18n');
 
 	export let chatId;
 	export let history;
@@ -28,7 +36,9 @@
 
 	export let isLastMessage;
 	export let readOnly = false;
+	export let writeAccess = false;
 	export let allowDelete = true;
+	export let allowToolApproval: boolean = false;
 	export let compactPreview = false;
 	export let editCodeBlock = true;
 
@@ -47,12 +57,14 @@
 	export let mergeResponses: Function;
 
 	export let addMessages: Function;
+	export let onToolCallResolved: Function = () => {};
 	export let forkHandler: Function | null = null;
 
 	export let triggerScroll: Function;
 
 	export let topPadding = false;
 	export let onInsertToNote: ((content: string) => void) | null = null;
+	export let onOpenArtifacts: ((code?: string) => void) | null = null;
 
 	const dispatch = createEventDispatcher();
 
@@ -86,15 +98,8 @@
 		let messageId = groupedMessageIds[modelIdx].messageIds[groupedMessageIdsIdx[modelIdx]];
 		console.log(messageId);
 
-		// Traverse the branch to find the deepest child message
-		let messageChildrenIds = history.messages[messageId].childrenIds;
-		while (messageChildrenIds.length !== 0) {
-			messageId = messageChildrenIds.at(-1);
-			messageChildrenIds = history.messages[messageId].childrenIds;
-		}
-
 		// Update the current message ID in history
-		history.currentId = messageId;
+		history.currentId = getDeepestChildId(history, messageId);
 
 		// Await UI updates
 		await tick();
@@ -110,14 +115,7 @@
 		let messageId = groupedMessageIds[modelIdx].messageIds[groupedMessageIdsIdx[modelIdx]];
 		console.log(messageId);
 
-		let messageChildrenIds = history.messages[messageId].childrenIds;
-
-		while (messageChildrenIds.length !== 0) {
-			messageId = messageChildrenIds.at(-1);
-			messageChildrenIds = history.messages[messageId].childrenIds;
-		}
-
-		history.currentId = messageId;
+		history.currentId = getDeepestChildId(history, messageId);
 
 		await tick();
 		await updateChat();
@@ -133,14 +131,7 @@
 		let messageId = groupedMessageIds[modelIdx].messageIds[groupedMessageIdsIdx[modelIdx]];
 		console.log(messageId);
 
-		let messageChildrenIds = history.messages[messageId].childrenIds;
-
-		while (messageChildrenIds.length !== 0) {
-			messageId = messageChildrenIds.at(-1);
-			messageChildrenIds = history.messages[messageId].childrenIds;
-		}
-
-		history.currentId = messageId;
+		history.currentId = getDeepestChildId(history, messageId);
 
 		await tick();
 		await updateChat();
@@ -207,13 +198,7 @@
 
 	const onGroupClick = async (_messageId, modelIdx) => {
 		if (messageId != _messageId) {
-			let currentMessageId = _messageId;
-			let messageChildrenIds = history.messages[currentMessageId].childrenIds;
-			while (messageChildrenIds.length !== 0) {
-				currentMessageId = messageChildrenIds.at(-1);
-				messageChildrenIds = history.messages[currentMessageId].childrenIds;
-			}
-			history.currentId = currentMessageId;
+			history.currentId = getDeepestChildId(history, _messageId);
 			selectedModelIdx = modelIdx;
 
 			// await tick();
@@ -227,7 +212,8 @@
 			const { messageIds } = groupedMessageIds[modelIdx];
 			const messageId = messageIds[groupedMessageIdsIdx[modelIdx]];
 
-			return history.messages[messageId].content;
+			const message = history.messages[messageId];
+			return getOutputText(message?.output) || message?.content || '';
 		});
 		mergeResponses(messageId, responses, chatId);
 	};
@@ -326,11 +312,14 @@
 											groupedMessageIds[selectedModelIdx].messageIds.length - 1;
 									}}
 									{addMessages}
+									{onToolCallResolved}
 									{forkHandler}
 									{readOnly}
 									{compactPreview}
 									{topPadding}
 									{onInsertToNote}
+									{onOpenArtifacts}
+									{writeAccess}
 								/>
 							{/if}
 						{/key}
@@ -379,6 +368,7 @@
 										{rateMessage}
 										{deleteMessage}
 										{allowDelete}
+										{allowToolApproval}
 										{actionMessage}
 										{submitMessage}
 										{continueResponse}
@@ -389,12 +379,15 @@
 												groupedMessageIds[modelIdx].messageIds.length - 1;
 										}}
 										{addMessages}
+										{onToolCallResolved}
 										{forkHandler}
 										{readOnly}
 										{compactPreview}
 										{editCodeBlock}
 										{topPadding}
 										{onInsertToNote}
+										{onOpenArtifacts}
+										{writeAccess}
 									/>
 								{/if}
 							{/key}
@@ -436,14 +429,14 @@
 									>
 										<Tooltip
 											className="flex self-center"
-											content={formatMessageTimestampFull(message.timestamp * 1000)}
+											content={formatMessageTimestampFull(message.timestamp * 1000, $i18n.language)}
 											placement="bottom"
 										>
 											<time
 												datetime={new Date(message.timestamp * 1000).toISOString()}
-												class="invisible group-hover:visible ml-1 shrink-0 whitespace-nowrap text-[0.6875rem] tabular-nums text-gray-400 dark:text-gray-600 select-none"
+												class="hover-reveal ml-1 shrink-0 whitespace-nowrap text-[0.6875rem] tabular-nums text-gray-400 dark:text-gray-600 select-none"
 											>
-												{formatMessageTimestamp(message.timestamp * 1000)}
+												{formatMessageTimestamp(message.timestamp * 1000, $i18n.language)}
 											</time>
 										</Tooltip>
 									</div>
@@ -452,15 +445,16 @@
 						{/if}
 					</div>
 
-					{#if isLastMessage}
+					{#if isLastMessage && $visibleControls['chat.merge']}
 						<div class=" shrink-0 text-gray-600 dark:text-gray-500 mt-1">
 							<Tooltip content={$i18n.t('Merge Responses')} placement="bottom">
 								<button
+									aria-label={$i18n.t('Merge Responses')}
 									type="button"
 									id="merge-response-button"
 									class="{true
 										? 'visible'
-										: 'invisible group-hover:visible'} p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition"
+										: 'hover-reveal'} p-1 hover:bg-black/5 dark:hover:bg-white/5 rounded-lg dark:hover:text-white hover:text-black transition"
 									on:click={() => {
 										mergeResponsesHandler();
 									}}

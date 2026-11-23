@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { tick, createEventDispatcher } from 'svelte';
 	import { flyAndScale } from '$lib/utils/transitions';
+	import { mobile } from '$lib/stores';
 
 	import ChevronDown from '$lib/components/icons/ChevronDown.svelte';
 
@@ -57,11 +58,21 @@
 		contentEl.style.minWidth = `${rect.width}px`;
 	}
 
-	async function toggleOpen() {
+	async function toggleOpen(focusContent = false) {
 		open = !open;
 		if (open) {
 			await tick();
 			positionContent();
+			if (focusContent) {
+				contentEl?.querySelector<HTMLElement>('button')?.focus();
+			}
+		}
+	}
+
+	function handleTriggerKeydown(event) {
+		if (event.target === triggerEl && (event.key === 'Enter' || event.key === ' ')) {
+			event.preventDefault();
+			toggleOpen(true);
 		}
 	}
 
@@ -74,13 +85,16 @@
 
 	function handleKeydown(event) {
 		if (event.key === 'Escape' && open) {
+			const restoreFocus = contentEl?.contains(document.activeElement);
 			open = false;
+			if (restoreFocus) triggerEl?.focus();
 		}
 	}
 </script>
 
 <svelte:window
 	on:click={handleWindowClick}
+	on:dragstart|capture={handleWindowClick}
 	on:keydown={handleKeydown}
 	on:scroll|capture={positionContent}
 	on:resize={positionContent}
@@ -88,10 +102,12 @@
 
 <button
 	bind:this={triggerEl}
-	class={className}
+	class="focus-ring {className}"
 	aria-label={placeholder}
 	type="button"
-	on:click={toggleOpen}
+	aria-expanded={open}
+	on:click={() => toggleOpen(!$mobile)}
+	on:keydown={handleTriggerKeydown}
 >
 	<div class="flex w-full items-center justify-between gap-2">
 		<span class="truncate text-left {selectedLabels.length ? '' : 'text-gray-500'}">
@@ -105,12 +121,17 @@
 {#if open}
 	<div use:portal bind:this={contentEl} transition:flyAndScale>
 		<div
-			class="rounded-2xl min-w-[170px] max-h-72 overflow-y-auto p-1 border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-850 dark:text-white shadow-lg"
+			class="rounded-2xl min-w-[10.625rem] max-h-72 overflow-y-auto p-1 border border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-850 dark:text-white shadow-lg"
+			role="listbox"
+			aria-multiselectable="true"
+			aria-label={placeholder}
 		>
 			{#each items as item}
 				<button
-					class="flex w-full gap-2 items-center px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl"
+					class="focus-ring flex w-full gap-2 items-center px-3 py-1.5 text-sm cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl"
 					type="button"
+					role="option"
+					aria-selected={selectedValues.includes(item.value)}
 					on:click={() => toggleItem(item.value)}
 				>
 					<div

@@ -14,6 +14,8 @@
 
 	export let side: 'top' | 'bottom' = 'top';
 	export let align: 'start' | 'end' = 'start';
+	/** Render the trigger as a bare value, for label | value rows. */
+	export let plain = false;
 
 	/** Optional callback when selection changes */
 	export let onChange: () => void = () => {};
@@ -29,35 +31,45 @@
 	<Dropdown bind:show={showDropdown} {side} {align}>
 		<button
 			type="button"
-			class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl text-xs transition
-				{terminalServerId ? 'text-black dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'}
-				hover:text-gray-900 dark:hover:text-gray-100"
+			aria-label={terminalLabel}
+			title={terminalLabel}
+			class={plain
+				? 'flex w-full min-w-0 items-center text-left text-xs font-normal leading-6 text-gray-700 dark:text-gray-300'
+				: `flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl text-xs transition ${terminalServerId ? 'text-black dark:text-gray-100' : 'text-gray-600 dark:text-gray-400'} hover:text-gray-900 dark:hover:text-gray-100`}
 		>
-			<Cloud className="size-3.5 shrink-0" strokeWidth="2" />
-			<span class="whitespace-nowrap max-w-32 truncate">{terminalLabel}</span>
-			<svg
-				xmlns="http://www.w3.org/2000/svg"
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke-width="2"
-				stroke="currentColor"
-				class="size-2.5"
-			>
-				<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
-			</svg>
+			{#if plain}
+				<span class="truncate {terminalServerId ? '' : 'text-gray-400 dark:text-gray-500'}"
+					>{terminalServerId ? terminalLabel : $i18n.t('None')}</span
+				>
+			{:else}
+				<Cloud className="size-3.5 shrink-0" strokeWidth="2" />
+				{#if terminalServerId}
+					<span class="whitespace-nowrap max-w-32 truncate">{terminalLabel}</span>
+				{/if}
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke-width="2"
+					stroke="currentColor"
+					class="size-2.5"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+				</svg>
+			{/if}
 		</button>
 
 		<div
 			slot="content"
 			class="rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 flex flex-col bg-white dark:bg-gray-850 min-w-56 max-w-56 p-0.5"
 		>
-			<div class="px-2 text-[11px] text-gray-500 py-0.5">
+			<div class="px-2 text-[0.6875rem] text-gray-500 py-0.5">
 				{$i18n.t('Terminal')}
 			</div>
 
 			{#each terminalServers as server (server.id)}
 				<button
-					class="flex w-full h-[1.6875rem] justify-between gap-2 items-center px-2 text-[13px] cursor-pointer rounded-xl {terminalServerId ===
+					class="flex w-full h-[1.6875rem] justify-between gap-2 items-center px-2 text-[0.8125rem] cursor-pointer rounded-xl {terminalServerId ===
 					server.id
 						? 'text-gray-900 dark:text-gray-100'
 						: 'text-gray-700 hover:text-gray-900 dark:text-gray-300 dark:hover:text-gray-100'}"
@@ -78,7 +90,7 @@
 						<span class="truncate">{server.name || server.id}</span>
 					</div>
 					{#if terminalServerId === server.id}
-						<div class="shrink-0 text-emerald-600 dark:text-emerald-400">
+						<div class="shrink-0 text-gray-500 dark:text-gray-400">
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								viewBox="0 0 20 20"
@@ -98,7 +110,7 @@
 
 			{#if terminalServerId}
 				<div class="border-t border-gray-100 dark:border-gray-800 mt-1 pt-1">
-					<div class="px-2 py-0.5 text-[11px] text-gray-500">
+					<div class="px-2 py-0.5 text-[0.6875rem] text-gray-500">
 						{$i18n.t('Working Directory')}
 					</div>
 					<div class="px-2">
@@ -106,7 +118,7 @@
 							type="text"
 							bind:value={terminalCwd}
 							placeholder="/home/user/project"
-							class="w-full bg-transparent outline-hidden text-[13px] py-1 placeholder:text-gray-400 dark:placeholder:text-gray-600"
+							class="w-full bg-transparent outline-hidden text-[0.8125rem] py-1 placeholder:text-gray-400 dark:placeholder:text-gray-600"
 							on:click={(e) => e.stopPropagation()}
 							on:input={onChange}
 						/>
